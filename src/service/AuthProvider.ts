@@ -1,13 +1,16 @@
 import { createHash } from "crypto";
-import type { LoginRequest } from "../lib/types/LoginRequest";
-import type { LoginResponse } from "../lib/types/LoginResponse";
-import { sign } from "jsonwebtoken";
+import type { LoginRequest } from "../lib/types/auth/LoginRequest";
+import type { LoginResponse } from "../lib/types/auth/LoginResponse";
+import { JwtPayload, sign, verify } from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
-import { RegisterRequest } from "../lib/types/RegisterRequest";
-import { RegisterResponse } from "../lib/types/RegisterResponse";
+import { RegisterRequest } from "../lib/types/auth/RegisterRequest";
+import { RegisterResponse } from "../lib/types/auth/RegisterResponse";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "default-secret";
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || "default-refresh-secret";
+
+const accessTokenExpiry = '20s';
+const refreshTokenExpiry = '7d';
 
 export async function login(loginRequest: LoginRequest): Promise<LoginResponse> {
     try {
@@ -29,8 +32,8 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
 
         const payload = { email: user.email, username: user.username };
 
-        const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
-        const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+        const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
+        const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
 
         return {
             statusCode: 200,
@@ -94,3 +97,24 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
     }
 }
 
+export async function refreshToken(token: string): Promise<LoginResponse> {
+    try {
+        const payload = verify(token, REFRESH_TOKEN_SECRET) as JwtPayload;
+
+        const user = await prisma.user.findUnique({
+            where: { email: payload.email },
+        });
+
+        if (!user) {
+            return { statusCode: 404, message: 'Invalid refresh token' };
+        }
+
+        const newPayload = { email: user.email, username: user.username };
+        const accessToken = sign(newPayload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
+
+        return { statusCode: 200, message: "Token refreshed successfully", accessToken };
+    } catch (error) {
+        console.error('Refresh token error:', error);
+        return { statusCode: 500, message: "Internal server error. An error occurred while refreshing token" };
+    }
+}
