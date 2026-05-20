@@ -1,16 +1,24 @@
 import fastify from 'fastify';
 import type { LoginRequest } from './lib/types/LoginRequest';
 import type { LoginResponse } from './lib/types/LoginResponse';
-import { Login } from './service/LoginProvider';
+import { login, register } from './service/AuthProvider';
+import { RegisterRequest } from './lib/types/RegisterRequest';
+import { RegisterResponse } from './lib/types/RegisterResponse';
 
 const server = fastify();
 
-server.get('/ping', async (request, response) => {
-    return 'pong\n';
+server.post<{ Body: LoginRequest; Reply: LoginResponse}>('/login', async (request, response) => {
+    const res = await login(request.body);
+
+    response.status(res.statusCode);
+
+    return res;
 });
 
-server.post<{ Body: LoginRequest; Reply: LoginResponse}>('/login', async (request, response) => {
-    const res = Login(request.body);
+server.post<{ Body: RegisterRequest, Reply: RegisterResponse}>('/register', async (request, response) => {
+    const res = await register(request.body);
+
+    response.status(res.statusCode);
 
     return res;
 });
