@@ -1,25 +1,24 @@
-import { createHash } from "crypto";
 import type { LoginRequest } from "../lib/types/auth/LoginRequest";
 import type { LoginResponse } from "../lib/types/auth/LoginResponse";
 import { JwtPayload, sign, verify } from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { RegisterRequest } from "../lib/types/auth/RegisterRequest";
 import { RegisterResponse } from "../lib/types/auth/RegisterResponse";
+import { Response } from "../lib/types/auth/Response";
+import bcrypt from "bcrypt";
 
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "default-secret";
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || "default-refresh-secret";
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
+const SALT_ROUNDS = 10;
 
-const accessTokenExpiry = '20s';
+const accessTokenExpiry = '15m';
 const refreshTokenExpiry = '7d';
 
 export async function login(loginRequest: LoginRequest): Promise<LoginResponse> {
     try {
-        const hashedPassword: string = createHash('sha256').update(loginRequest.password).digest('hex');
-
-        const user = await prisma.user.findFirst({
+            const user = await prisma.user.findFirst({
             where: {
                 email: loginRequest.email,
-                password: hashedPassword,
             }
         });
 
@@ -30,10 +29,24 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
             };
         }
 
+        const passwordMatch = await bcrypt.compare(loginRequest.password, user.password);
+
+        if (!passwordMatch) {
+            return {
+                statusCode: 401,
+                message: "Invalid email or password",
+            };
+        }
+
         const payload = { email: user.email, username: user.username };
 
         const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
         const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
+
+        await prisma.user.update({
+            where: { email: user.email },
+            data: { refreshToken: refreshToken }
+        });
 
         return {
             statusCode: 200,
@@ -50,6 +63,23 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
         }
     }
     
+}
+
+export async function logout(email: string): Promise<Response> {
+    try {
+        await prisma.user.update({
+            where: { email },
+            data: { refreshToken: null }
+        });
+
+        return { statusCode: 200, message: "Logout successful" };
+    } catch (error) {
+        console.error("Logout error:", error);
+        return {
+            statusCode: 500,
+            message: "Internal server error. An error occurred during logout",
+        }
+    }
 }
 
 export async function register(registerRequest: RegisterRequest): Promise<RegisterResponse> {
@@ -74,9 +104,9 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
             };
         }
 
-        const hashedPassword: string = createHash('sha256').update(registerRequest.password).digest('hex');
+        const hashedPassword: string = await bcrypt.hash(registerRequest.password, SALT_ROUNDS);
 
-        const newUser = await prisma.user.create({
+        await prisma.user.create({
             data: {
                 email: registerRequest.email,
                 username: registerRequest.username,
@@ -102,7 +132,10 @@ export async function refreshToken(token: string): Promise<LoginResponse> {
         const payload = verify(token, REFRESH_TOKEN_SECRET) as JwtPayload;
 
         const user = await prisma.user.findUnique({
-            where: { email: payload.email },
+            where: { 
+                email: payload.email,
+                refreshToken: token,
+            },
         });
 
         if (!user) {

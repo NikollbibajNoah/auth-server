@@ -1,8 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { JwtPayload, verify } from "jsonwebtoken";
 
-
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "default-secret";
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
     try {
