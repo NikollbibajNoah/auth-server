@@ -6,6 +6,7 @@ import { RegisterRequest } from "../lib/types/auth/RegisterRequest";
 import { RegisterResponse } from "../lib/types/auth/RegisterResponse";
 import { Response } from "../lib/types/auth/Response";
 import bcrypt from "bcrypt";
+import { LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -16,7 +17,16 @@ const refreshTokenExpiry = '7d';
 
 export async function login(loginRequest: LoginRequest): Promise<LoginResponse> {
     try {
-            const user = await prisma.user.findFirst({
+        const validation = LoginSchema.safeParse(loginRequest);
+
+        if (!validation.success) {
+            return {
+                statusCode: 400,
+                message: validation.error.issues[0]!.message,
+            }
+        }
+
+        const user = await prisma.user.findFirst({
             where: {
                 email: loginRequest.email,
             }
@@ -84,6 +94,15 @@ export async function logout(email: string): Promise<Response> {
 
 export async function register(registerRequest: RegisterRequest): Promise<RegisterResponse> {
     try {
+        const validation = RegisterSchema.safeParse(registerRequest);
+
+        if (!validation.success) {
+            return {
+                statusCode: 400,
+                message: validation.error.issues[0]!.message,
+            }
+        }
+
         const existingUser = await prisma.user.findFirst({
             where: {
                 OR: [
@@ -129,6 +148,15 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
 
 export async function refreshToken(token: string): Promise<LoginResponse> {
     try {
+        const validation = RefreshTokenSchema.safeParse({ token });
+
+        if (!validation.success) {
+            return {
+                statusCode: 400,
+                message: validation.error.issues[0]!.message,
+            }
+        }
+
         const payload = verify(token, REFRESH_TOKEN_SECRET) as JwtPayload;
 
         const user = await prisma.user.findUnique({

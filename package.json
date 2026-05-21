@@ -1,7 +1,7 @@
 {
   "name": "auth-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "A lightweight and powerful auth server to connect via REST API. The authentication server uses stateless JWT tokens to authenticate users.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -11,22 +11,30 @@
     "type": "git",
     "url": "git+https://github.com/NikollbibajNoah/auth-server.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "auth",
+    "jwt",
+    "fastify",
+    "prisma",
+    "typescript"
+  ],
+  "author": "Noah Nikollbibaj",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/NikollbibajNoah/auth-server/issues"
   },
   "homepage": "https://github.com/NikollbibajNoah/auth-server#readme",
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.5",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.21.0"
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
