@@ -3,6 +3,7 @@ import fastify from 'fastify';
 import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
 import cors from '@fastify/cors';
+import { oauthRoutes } from './routes/oauthRoutes';
 
 const server = fastify();
 
@@ -28,6 +29,7 @@ server.register(cors, {
 
 server.register(authRoutes);
 server.register(userRoutes);
+server.register(oauthRoutes);
 
 server.listen({ port: 8080 }, (err, address) => {
     if (err) {

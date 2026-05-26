@@ -8,6 +8,7 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 - [Features](#features)
 - [Technologies](#technologies)
 - [API](#api)
+- [OAuth 2.0](#oauth-20)
 - [Configuration](#configuration)
 - [Installation](#installation)
 
@@ -67,7 +68,7 @@ Response:
 ```json
 {
     "statusCode": 200,
-    "message": "Login successful",
+    "message": "Login successfull",
     "accessToken": "...",
     "refreshToken": "..."
 }
@@ -80,6 +81,20 @@ Response:
 }
 ```
 
+## OAuth 2.0
+The auth server supports the OAuth 2.0 flow for logging in via providers such as Google, GitHub, Facebook, etc. After a successfull redirect-based login, the user is stored in the database without a password.
+> [!INFO]
+> Currently the auth server only supports Google OAuth 2.0, but additional providers can be added.
+
+The Google login endpoint is:
+`http://localhost:8080/auth/google`
+
+After a successfull login the server returns the same response format as the traditional login (for example: accessToken and refreshToken).
+
+> [!NOTE]
+> OAuth 2.0 is currently implemented for local development only and is not production-ready.
+
+
 ## Configuration
 The project already offers a `.env.example` file in the root directory, which can be renamed to `.env` and used.
 ```env
@@ -91,9 +106,35 @@ POSTGRES_PASSWORD=password
 POSTGRES_DB=auth_db
 POSTGRES_PORT=5432
 
-ACCESS_TOKEN_SECRET="your-access-secret"
-REFRESH_TOKEN_SECRET="your-refresh-secret"
+# Auth
+ACCESS_TOKEN_SECRET="ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+REFRESH_TOKEN_SECRET="1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+# Frontend
+FRONTEND_URL="http://localhost:3000"
+FRONTEND_HOSTNAME="localhost"
+
+# OAuth2
+OAUTH_CALLBACK_BASE_URL=http://localhost:8080 # Same as backend URL
+
+# Google
+GOOGLE_CLIENT_ID="my_client_id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="my_client_secret"
 ```
+
+> [!NOTE]
+> Before using OAuth 2.0 you must configure an OAuth client in the Google Cloud Console: https://console.cloud.google.com/
+
+Steps to configure the Google OAuth 2.0 provider:
+1. Create a new project (or select an existing project)
+2. Open **APIs and Services** and go to the **OAuth consent screen**. Fill in the required fields (app name, support email, etc.).
+3. Choose the user type (typically External for testing with external accounts).
+4. Create credentials: select OAuth client ID and set the Application type to **Web application**.
+5. Under Authorized redirect URIs add `OAUTH_CALLBACK_BASE_URL/auth/google/callback` (for example: http://localhost:8080/auth/google/callback). The URI must match exactly (scheme, host, port, path).
+6. Copy the Client ID and Client Secret into your .env as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+7. Restart your backend after updating .env to ensure the new values are loaded.
+
+Optional note: ensure you configure the correct OAuth client (the one whose Client ID matches `GOOGLE_CLIENT_ID` in your .env).
 
 ## Installation
 

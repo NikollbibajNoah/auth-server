@@ -39,7 +39,9 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
             };
         }
 
-        const passwordMatch = await bcrypt.compare(loginRequest.password, user.password);
+        const passwordMatch = user.password
+        ? await bcrypt.compare(loginRequest.password, user.password)
+        : false;
 
         if (!passwordMatch) {
             return {
