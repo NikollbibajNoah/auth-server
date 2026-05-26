@@ -83,7 +83,7 @@ Response:
 
 ## OAuth 2.0
 The auth server supports the OAuth 2.0 flow for logging in via providers such as Google, GitHub, Facebook, etc. After a successfull redirect-based login, the user is stored in the database without a password.
-> [!INFO]
+> [!TIP]
 > Currently the auth server only supports Google OAuth 2.0, but additional providers can be added.
 
 The Google login endpoint is:
