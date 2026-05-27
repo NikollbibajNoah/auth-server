@@ -5,14 +5,22 @@ const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const authHeader = request.headers.authorization;
+        let token: string | undefined;
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return reply.status(401).send({ statusCode: 401, message: "Authorization header missing or malformed" });
+        const cookieToken = request.cookies?.accessToken;
+
+        if (cookieToken) {
+            token = cookieToken;
+        } else {
+            const authHeader = request.headers.authorization;
+
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                return reply.status(401).send({ statusCode: 401, message: "Authorization header missing or malformed" });
+            }
+
+            const parts = authHeader.split(" ");
+            token = parts.length > 1 ? parts[1] : undefined;
         }
-
-        const parts = authHeader.split(" ");
-        const token = parts.length > 1 ? parts[1] : undefined;
 
         if (!token) {
             return reply.status(401).send({ statusCode: 401, message: "Token missing" });

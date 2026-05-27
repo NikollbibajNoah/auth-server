@@ -4,27 +4,40 @@ import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
 import cors from '@fastify/cors';
 import { oauthRoutes } from './routes/oauthRoutes';
+import fastifyCookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 
 const server = fastify();
 
+const allowedOrigins = [
+    'http://localhost:8080',
+    process.env.FRONTEND_URL!,
+].filter(Boolean);
+
 server.register(cors, {
+    credentials: true,
     origin: (origin, callback) => {
         if (!origin) {
             return callback(null, true);
         }
 
-        try {
-            const hostname = new URL(origin).hostname;
-
-            if (hostname === 'localhost' || hostname === process.env.FRONTEND_HOSTNAME) {
-                return callback(null, true);
-            }
-
-            return callback(new Error('Not allowed by CORS'), false);
-        } catch {
-            return callback(new Error('Invalid origin'), false);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
         }
+
+        return callback(new Error('Not allowed by CORS'), false);
     }
+});
+
+server.register(fastifyCookie, {
+    secret: process.env.COOKIE_SECRET!,
+    hook: 'onRequest',
+    parseOptions: {}
+});
+
+server.register(fastifyStatic, {
+    root: path.join(__dirname, '../public'),
 });
 
 server.register(authRoutes);

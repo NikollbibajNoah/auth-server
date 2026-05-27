@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import oauthPlugin from "@fastify/oauth2";
 import { CALLBACK_BASE } from "../lib/types/FastifyTypes";
 import { handleOAuthCallback } from "../service/OAuthProvider";
+import { accessTokenCookieOptions, refreshTokenCookieOptions } from "../lib/Cookies";
 
 export async function oauthRoutes(server: FastifyInstance) {
     
@@ -45,7 +46,15 @@ export async function oauthRoutes(server: FastifyInstance) {
                 username: googleUser.name,
             });
 
-            return reply.status(result.statusCode).send(result);
+            reply
+                .setCookie("accessToken", result.accessToken!, accessTokenCookieOptions)
+                .setCookie("refreshToken", result.refreshToken!, refreshTokenCookieOptions);
+
+
+            return reply.redirect(process.env.FRONTEND_URL!);
+
+            // return reply.status(result.statusCode).send(result);
+            
             // if (result.statusCode !== 200) {
             //     return reply.redirect(`${FRONTEND_URL}/auth/error?reason=google_failed`);
             // }
