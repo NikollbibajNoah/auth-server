@@ -83,16 +83,13 @@ Response:
 
 ## OAuth 2.0
 The auth server supports the OAuth 2.0 flow for logging in via providers such as Google, GitHub, Facebook, etc. After a successfull redirect-based login, the user is stored in the database without a password.
-> [!TIP]
+> [!NOTE]
 > Currently the auth server only supports Google OAuth 2.0, but additional providers can be added.
 
 The Google login endpoint is:
 `http://localhost:8080/auth/google`
 
 After a successfull login the server returns the same response format as the traditional login (for example: accessToken and refreshToken).
-
-> [!NOTE]
-> OAuth 2.0 is currently implemented for local development only and is not production-ready.
 
 
 ## Configuration
@@ -135,6 +132,19 @@ Steps to configure the Google OAuth 2.0 provider:
 7. Restart your backend after updating .env to ensure the new values are loaded.
 
 Optional note: ensure you configure the correct OAuth client (the one whose Client ID matches `GOOGLE_CLIENT_ID` in your .env).
+
+## Demo
+
+A minimal test frontend is served directly by the auth server and deployed on Vercel.
+
+🔗 **https://auth-server-hra8.vercel.app**
+
+From there you can:
+- Register and login with email and password
+- Login via Google OAuth 2.0
+- Test token refresh and logout
+
+> Tokens are stored as httpOnly cookies - not visible in JavaScript.
 
 ## Installation
 
