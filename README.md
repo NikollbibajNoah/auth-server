@@ -84,10 +84,11 @@ Response:
 ## OAuth 2.0
 The auth server supports the OAuth 2.0 flow for logging in via providers such as Google, GitHub, Facebook, etc. After a successfull redirect-based login, the user is stored in the database without a password.
 > [!NOTE]
-> Currently the auth server only supports Google OAuth 2.0, but additional providers can be added.
+> Currently the auth server only supports Google and Github OAuth 2.0, but additional providers can be added.
 
-The Google login endpoint is:
+The login endpoints for supported providers are:
 `http://localhost:8080/auth/google`
+`http://localhost:8080/auth/github`
 
 After a successfull login the server returns the same response format as the traditional login (for example: accessToken and refreshToken).
 
@@ -117,10 +118,14 @@ OAUTH_CALLBACK_BASE_URL=http://localhost:8080 # Same as backend URL
 # Google
 GOOGLE_CLIENT_ID="my_client_id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="my_client_secret"
+
+# GitHub
+GITHUB_CLIENT_ID="my_client_id"
+GITHUB_CLIENT_SECRET="my_client_secret"
 ```
 
 > [!NOTE]
-> Before using OAuth 2.0 you must configure an OAuth client in the Google Cloud Console: https://console.cloud.google.com/
+> Before using OAuth 2.0 you must configure an OAuth client in the Google Cloud Console: https://console.cloud.google.com/ and for github under: settings > developer settings > oauth apps
 
 Steps to configure the Google OAuth 2.0 provider:
 1. Create a new project (or select an existing project)
@@ -131,7 +136,7 @@ Steps to configure the Google OAuth 2.0 provider:
 6. Copy the Client ID and Client Secret into your .env as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 7. Restart your backend after updating .env to ensure the new values are loaded.
 
-Optional note: ensure you configure the correct OAuth client (the one whose Client ID matches `GOOGLE_CLIENT_ID` in your .env).
+Optional note: ensure you configure the correct OAuth client (the one whose Client ID matches `GOOGLE_CLIENT_ID` in your .env and the same for github and all other providers).
 
 ## Demo
 
@@ -142,6 +147,7 @@ A minimal test frontend is served directly by the auth server and deployed on Ve
 From there you can:
 - Register and login with email and password
 - Login via Google OAuth 2.0
+- Login via Github OAuth 2.0
 - Test token refresh and logout
 
 > Tokens are stored as httpOnly cookies - not visible in JavaScript.
