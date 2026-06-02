@@ -68,4 +68,83 @@ export async function oauthRoutes(server: FastifyInstance) {
             return reply.status(500).send({ statusCode: 500, error: "Google OAuth failed" });
         }
     })
+
+    // Github
+    server.register(oauthPlugin, {
+        name: "githubOAuth2",
+        credentials: {
+            client: {
+                id: process.env.GITHUB_CLIENT_ID!,
+                secret: process.env.GITHUB_CLIENT_SECRET!
+            },
+            auth: oauthPlugin.GITHUB_CONFIGURATION,
+        },
+        startRedirectPath: "/auth/github",
+        callbackUri: `${CALLBACK_BASE}/auth/github/callback`,
+        scope: ["read:user", "user:email"],
+    });
+
+    server.get("/auth/github/callback", async (request, reply) => {
+        try {
+            const tokenResponse =
+                await server.githubOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
+
+            const accessToken = tokenResponse.token.access_token;
+
+            const userInfoResponse = await fetch("https://api.github.com/user", {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/vnd.github+json",
+                },
+            });
+
+            const githubUser = await userInfoResponse.json() as {
+                id: number;
+                login: string;
+                email?: string;
+            };
+
+            let email = githubUser.email;
+
+            // If email is not public, fetch from separate endpoint
+            if (!email) {
+                const emailsResponse = await fetch("https://api.github.com/user/emails", {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: "application/vnd.github+json",
+                    },
+                });
+
+                const emails = await emailsResponse.json() as Array<{
+                    email: string;
+                    primary: boolean;
+                    verified: boolean;
+                }>;
+
+                email = emails.find(
+                    (e) => e.primary && e.verified
+                )?.email;
+            }
+
+            if (!email) {
+                return reply.status(400).send({ statusCode: 400, error: "No verified email found" });
+            }
+
+            const result = await handleOAuthCallback({
+                provider: "github",
+                providerId: githubUser.id.toString(),
+                email,
+                username: githubUser.login,
+            });
+
+            reply
+                .setCookie("accessToken", result.accessToken!, accessTokenCookieOptions)
+                .setCookie("refreshToken", result.refreshToken!, refreshTokenCookieOptions);
+
+            return reply.redirect(process.env.FRONTEND_URL!);
+        } catch (error) {
+            console.error("Github OAuth error:", error);
+            return reply.status(500).send({ statusCode: 500, error: "Github OAuth failed" });
+        }
+    });
 }
