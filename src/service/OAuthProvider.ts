@@ -1,8 +1,8 @@
 import { prisma } from "../lib/prisma";
-import { OAuthUserInfo } from "../lib/types/OAuthUserInfo";
-import { resolveUsername } from "../lib/Utils";
+import { OAuthUserInfo } from "../lib/types/oAuthUserInfo";
+import { resolveUsername } from "../lib/utils";
 import { sign } from "jsonwebtoken";
-import { LoginResponse } from "../lib/types/auth/LoginResponse";
+import { LoginResponse } from "../lib/types/auth/loginResponse";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;

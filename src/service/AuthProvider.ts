@@ -1,10 +1,10 @@
-import type { LoginRequest } from "../lib/types/auth/LoginRequest";
-import type { LoginResponse } from "../lib/types/auth/LoginResponse";
+import type { LoginRequest } from "../lib/types/auth/loginRequest";
+import type { LoginResponse } from "../lib/types/auth/loginResponse";
 import { JwtPayload, sign, verify } from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
-import { RegisterRequest } from "../lib/types/auth/RegisterRequest";
-import { RegisterResponse } from "../lib/types/auth/RegisterResponse";
-import { Response } from "../lib/types/auth/Response";
+import { RegisterRequest } from "../lib/types/auth/registerRequest";
+import { RegisterResponse } from "../lib/types/auth/registerResponse";
+import { Response } from "../lib/types/auth/response";
 import bcrypt from "bcrypt";
 import { LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
 
@@ -169,13 +169,25 @@ export async function refreshToken(token: string): Promise<LoginResponse> {
         });
 
         if (!user) {
+            await prisma.user.updateMany({
+                where: { email: payload.email },
+                data: { refreshToken: null },
+            });
+
             return { statusCode: 404, message: 'Invalid refresh token' };
         }
 
         const newPayload = { email: user.email, username: user.username };
         const accessToken = sign(newPayload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
+        const newRefreshToken = sign(newPayload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
 
-        return { statusCode: 200, message: "Token refreshed successfully", accessToken };
+        // Update old token
+        await prisma.user.update({
+            where: { email: user.email },
+            data: { refreshToken: newRefreshToken }
+        });
+
+        return { statusCode: 200, message: "Token refreshed successfully", accessToken, refreshToken: newRefreshToken };
     } catch (error) {
         console.error('Refresh token error:', error);
         return { statusCode: 500, message: "Internal server error. An error occurred while refreshing token" };

@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import { UserInfoResponse } from "../lib/types/UserInfoResponse";
+import { UserInfoResponse } from "../lib/types/userInfoResponse";
 
 export async function getMe(email: string): Promise<UserInfoResponse> {
     try {

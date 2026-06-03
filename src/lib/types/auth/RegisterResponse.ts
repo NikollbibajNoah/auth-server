@@ -1,4 +1,4 @@
-import { Response } from "./Response";
+import { Response } from "./response";
 
 export type RegisterResponse = Response & {
     accessToken?: string;

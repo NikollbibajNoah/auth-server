@@ -1,4 +1,4 @@
-import { Response } from "./auth/Response";
+import { Response } from "./auth/response";
 
 export type UserInfoResponse = Response & {
     user?: {

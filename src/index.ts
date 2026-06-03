@@ -6,6 +6,7 @@ import cors from '@fastify/cors';
 import { oauthRoutes } from './routes/oauthRoutes';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import fastifyRateLimit from '@fastify/rate-limit';
 import path from 'path';
 
 const server = fastify();
@@ -43,6 +44,11 @@ server.register(fastifyStatic, {
 server.register(authRoutes);
 server.register(userRoutes);
 server.register(oauthRoutes);
+
+server.register(fastifyRateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+});
 
 server.listen({ port: 8080 }, (err, address) => {
     if (err) {

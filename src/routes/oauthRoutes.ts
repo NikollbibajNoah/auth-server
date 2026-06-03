@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import oauthPlugin from "@fastify/oauth2";
-import { CALLBACK_BASE } from "../lib/types/FastifyTypes";
-import { handleOAuthCallback } from "../service/OAuthProvider";
-import { accessTokenCookieOptions, refreshTokenCookieOptions } from "../lib/Cookies";
+import { CALLBACK_BASE } from "../lib/types/fastifyTypes";
+import { handleOAuthCallback } from "../service/oAuthProvider";
+import { accessTokenCookieOptions, refreshTokenCookieOptions } from "../lib/cookies";
 
 export async function oauthRoutes(server: FastifyInstance) {
     
