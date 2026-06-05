@@ -171,7 +171,7 @@ npm install
 docker-compose up -d
 
 # 4. Run migrations
-npx prisma migrate dev
+npx prisma migrate dev && prisma db seed
 
 # 5. Build and start
 npm run build

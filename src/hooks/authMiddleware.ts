@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { JwtPayload, verify } from "jsonwebtoken";
+import { TokenPayload } from "../lib/types/tokenPayload";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 
@@ -34,7 +35,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 
         const payload: JwtPayload = verified;
 
-        request.user = payload;
+        request.user = payload as TokenPayload;
 
     } catch (error) {
         console.error("Authentication error:", error);
@@ -43,5 +44,20 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
             statusCode: 401,
             message: "Invalid or expired token",
         });
+    }
+}
+
+export function requirePermission(...permissions: string[]) {
+    return async (request: FastifyRequest, reply: FastifyReply) => {
+        const userPermissions: string[] = request.user?.permissions ?? [];
+
+        const hasPermission = permissions.every(p => userPermissions.includes(p));
+
+        if (!hasPermission) {
+            return reply.status(403).send({
+                statusCode: 403,
+                message: "Forbidden: insufficient permissions"
+            });
+        }
     }
 }

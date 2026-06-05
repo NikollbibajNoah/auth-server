@@ -7,6 +7,7 @@ import { RegisterResponse } from "../lib/types/auth/registerResponse";
 import { Response } from "../lib/types/auth/response";
 import bcrypt from "bcrypt";
 import { LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
+import { getUserPayload } from "../lib/utils";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -50,7 +51,9 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
             };
         }
 
-        const payload = { email: user.email, username: user.username };
+        const payload = await getUserPayload(user.email);
+
+        if (!payload) return { statusCode: 500, message: "Error building token payload" };
 
         const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
         const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
@@ -125,6 +128,7 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
             };
         }
 
+        const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
         const hashedPassword: string = await bcrypt.hash(registerRequest.password, SALT_ROUNDS);
 
         await prisma.user.create({
@@ -132,6 +136,7 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
                 email: registerRequest.email,
                 username: registerRequest.username,
                 password: hashedPassword,
+                roleId: userRole!.id,
             }
         });
 
@@ -177,7 +182,10 @@ export async function refreshToken(token: string): Promise<LoginResponse> {
             return { statusCode: 404, message: 'Invalid refresh token' };
         }
 
-        const newPayload = { email: user.email, username: user.username };
+        const newPayload = await getUserPayload(user.email);
+
+        if (!newPayload) return { statusCode: 500, message: "Error building token payload" };
+        
         const accessToken = sign(newPayload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
         const newRefreshToken = sign(newPayload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
 

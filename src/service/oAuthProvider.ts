@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { OAuthUserInfo } from "../lib/types/oAuthUserInfo";
-import { resolveUsername } from "../lib/utils";
+import { getUserPayload, resolveUsername } from "../lib/utils";
 import { sign } from "jsonwebtoken";
 import { LoginResponse } from "../lib/types/auth/loginResponse";
 
@@ -41,11 +41,13 @@ export async function handleOAuthCallback(userInfo: OAuthUserInfo): Promise<Logi
                 });
             } else {
                 const username = await resolveUsername(userInfo.username);
+                const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
 
                 user = await prisma.user.create({
                     data: {
                         email: userInfo.email,
                         username,
+                        roleId: userRole!.id,
                         oauthAccounts: {
                             create: {
                                 provider: userInfo.provider,
@@ -57,7 +59,10 @@ export async function handleOAuthCallback(userInfo: OAuthUserInfo): Promise<Logi
             }
         }
 
-        const payload = { email: user.email, username: user.username, id: user.id };
+        const payload = await getUserPayload(user.email);
+
+        if (!payload) return { statusCode: 500, message: "Error building token payload" };
+
         const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
         const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
         

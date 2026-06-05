@@ -31,22 +31,14 @@
     <!-- OAuth -->
     <div class="space-y-2">
       <p class="text-xs text-zinc-500 uppercase tracking-widest">OAuth</p>
-
-      <!-- Google -->
       <a id="google-login-link" href="#"
         class="flex items-center gap-3 w-full bg-white text-zinc-900 hover:bg-zinc-100 transition px-4 py-3 rounded font-semibold text-sm">
-        <div class="size-4">
-          <img src="./assets/google.png" alt="Google" />
-        </div>
+        <div class="size-4"><img src="./assets/google.png" alt="Google" /></div>
         Continue with Google
       </a>
-
-      <!-- Github -->
       <a id="github-login-link" href="#"
         class="flex items-center gap-3 w-full bg-white text-zinc-900 hover:bg-zinc-100 transition px-4 py-3 rounded font-semibold text-sm">
-        <div class="size-4">
-          <img src="./assets/github.png" alt="Github" />
-        </div>
+        <div class="size-4"><img src="./assets/github.png" alt="Github" /></div>
         Continue with Github
       </a>
     </div>
@@ -54,14 +46,11 @@
     <!-- Traditional Auth -->
     <div class="space-y-3">
       <p class="text-xs text-zinc-500 uppercase tracking-widest">Traditional Auth</p>
-
-      <!-- Tabs -->
       <div class="flex gap-1 bg-zinc-900 p-1 rounded border border-zinc-800 w-fit">
         <button id="tab-login" onclick="switchTab('login')" class="tab-active text-xs px-4 py-1.5 rounded transition">Login</button>
         <button id="tab-register" onclick="switchTab('register')" class="tab-inactive text-xs px-4 py-1.5 rounded transition">Register</button>
       </div>
 
-      <!-- Login Form -->
       <div id="form-login" class="bg-zinc-900 border border-zinc-800 rounded p-4 space-y-3">
         <div>
           <label class="text-xs text-zinc-500 block mb-1">Email</label>
@@ -79,7 +68,6 @@
         </button>
       </div>
 
-      <!-- Register Form -->
       <div id="form-register" class="hidden bg-zinc-900 border border-zinc-800 rounded p-4 space-y-3">
         <div>
           <label class="text-xs text-zinc-500 block mb-1">Email</label>
@@ -125,8 +113,15 @@
           /refresh
         </button>
 
+        <!-- Admin only -->
+        <button onclick="getAllUsers()"
+          class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-800 transition text-sm px-4 py-3 rounded text-left">
+          <span class="text-amber-500 block text-xs mb-1">GET · admin</span>
+          /users
+        </button>
+
         <button onclick="doLogout()"
-          class="bg-zinc-800 hover:bg-red-950 hover:border-red-800 border border-transparent transition text-sm px-4 py-3 rounded text-left col-span-2">
+          class="bg-zinc-800 hover:bg-red-950 hover:border-red-800 border border-transparent transition text-sm px-4 py-3 rounded text-left">
           <span class="text-red-500 block text-xs mb-1">POST</span>
           /logout
         </button>
@@ -148,20 +143,17 @@
   </div>
 
   <script>
-    // ── Config ───────────────────────────────────────────────────────────
     const BASE_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:8080'
-    : 'https://auth-server-hra8.vercel.app';
+      ? 'http://localhost:8080'
+      : 'https://auth-server-hra8.vercel.app';
 
     const log = document.getElementById('log');
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
 
-    // Set Google OAuth link dynamically
     document.getElementById('google-login-link').href = `${BASE_URL}/auth/google`;
     document.getElementById('github-login-link').href = `${BASE_URL}/auth/github`;
 
-    // ── Tabs ─────────────────────────────────────────────────────────────
     function switchTab(tab) {
       document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
       document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
@@ -169,11 +161,10 @@
       document.getElementById('tab-register').className = tab === 'register' ? 'tab-active text-xs px-4 py-1.5 rounded transition' : 'tab-inactive text-xs px-4 py-1.5 rounded transition';
     }
 
-    // ── Status ───────────────────────────────────────────────────────────
-    function setStatus(loggedIn, username) {
+    function setStatus(loggedIn, username, role) {
       if (loggedIn) {
         statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-        statusText.textContent = `logged in as ${username}`;
+        statusText.textContent = `logged in as ${username} · ${role}`;
         statusText.className = 'text-xs text-emerald-400';
       } else {
         statusDot.className = 'w-2 h-2 rounded-full bg-zinc-600';
@@ -182,7 +173,6 @@
       }
     }
 
-    // ── Log ──────────────────────────────────────────────────────────────
     function addLog(method, endpoint, status, data) {
       const placeholder = log.querySelector('p.text-zinc-600');
       if (placeholder) placeholder.remove();
@@ -204,14 +194,11 @@
       log.prepend(entry);
     }
 
-    // ── Traditional Auth ─────────────────────────────────────────────────
     async function doLogin() {
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
-
       const res = await fetch(`${BASE_URL}/login`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -225,13 +212,8 @@
       const username = document.getElementById('reg-username').value;
       const password = document.getElementById('reg-password').value;
       const confirmPassword = document.getElementById('reg-confirm-password').value;
-
-      const d = JSON.stringify({ email, username, password, confirmPassword });
-
-      console.log('Register Payload:', d);
       const res = await fetch(`${BASE_URL}/register`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, username, password, confirmPassword }),
       });
@@ -240,19 +222,23 @@
       if (res.ok) switchTab('login');
     }
 
-    // ── Actions ──────────────────────────────────────────────────────────
     async function checkMe() {
       const res = await fetch(`${BASE_URL}/me`, { credentials: 'include' });
       const data = await res.json();
       addLog('GET', '/me', res.status, data);
-      if (res.ok) setStatus(true, data.user?.username);
+      if (res.ok) setStatus(true, data.user?.username, data.user?.role);
       else setStatus(false);
+    }
+
+    async function getAllUsers() {
+      const res = await fetch(`${BASE_URL}/users`, { credentials: 'include' });
+      const data = await res.json();
+      addLog('GET', '/users', res.status, data);
     }
 
     async function doRefresh() {
       const res = await fetch(`${BASE_URL}/refresh`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
@@ -261,10 +247,7 @@
     }
 
     async function doLogout() {
-      const res = await fetch(`${BASE_URL}/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const res = await fetch(`${BASE_URL}/logout`, { method: 'POST', credentials: 'include' });
       const data = await res.json();
       addLog('POST', '/logout', res.status, data);
       if (res.ok) setStatus(false);
@@ -274,7 +257,6 @@
       log.innerHTML = '<p class="text-zinc-600">Waiting for requests...</p>';
     }
 
-    // Status on load
     checkMe();
   </script>
 

@@ -1,9 +1,9 @@
 import { OAuth2Namespace } from "@fastify/oauth2";
-import { JwtPayload } from "jsonwebtoken";
+import { TokenPayload } from "./tokenPayload";
 
 declare module 'fastify' {
     interface FastifyRequest {
-        user?: JwtPayload;
+        user?: TokenPayload;
     }
 
     interface FastifyInstance {
