@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import fastify from 'fastify';
+import fastify, { FastifyError } from 'fastify';
 import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
 import cors from '@fastify/cors';
@@ -8,6 +8,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import fastifyRateLimit from '@fastify/rate-limit';
 import path from 'path';
+import { HttpException } from './lib/errors';
 
 const server = fastify();
 
@@ -15,6 +16,32 @@ const allowedOrigins = [
     'http://localhost:8080',
     process.env.FRONTEND_URL!,
 ].filter(Boolean);
+
+server.setErrorHandler((error: FastifyError, request, reply) => {
+    if (error instanceof HttpException) {
+        return reply
+            .status(error.statusCode)
+            .send({
+                statusCode: error.statusCode,
+                error: error.message,
+            });
+    }
+
+    // Rate limit
+    if (error.statusCode === 429) {
+        return reply.status(429).send({
+            statusCode: 429,
+            error: 'Too Many Requests, please try again later.',
+        });
+    }
+
+    // Unkown error
+    console.error('Unhandled error:', error);
+    return reply.status(500).send({
+        statusCode: 500,
+        error: 'Internal Server Error',
+    });
+});
 
 server.register(cors, {
     credentials: true,

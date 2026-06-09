@@ -8,6 +8,7 @@ import { Response } from "../lib/types/auth/response";
 import bcrypt from "bcrypt";
 import { LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
 import { getUserPayload } from "../lib/utils";
+import { BadRequestException, ConflictException, InternalServerErrorException, UnauthorizedException } from "../lib/errors";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -17,187 +18,138 @@ const accessTokenExpiry = '15m';
 const refreshTokenExpiry = '7d';
 
 export async function login(loginRequest: LoginRequest): Promise<LoginResponse> {
-    try {
-        const validation = LoginSchema.safeParse(loginRequest);
+    const validation = LoginSchema.safeParse(loginRequest);
 
-        if (!validation.success) {
-            return {
-                statusCode: 400,
-                message: validation.error.issues[0]!.message,
-            }
+    if (!validation.success) {
+        throw new BadRequestException(validation.error.issues[0]!.message);
+    }
+
+    const user = await prisma.user.findFirst({
+        where: {
+            email: loginRequest.email,
         }
+    });
 
-        const user = await prisma.user.findFirst({
-            where: {
-                email: loginRequest.email,
-            }
-        });
+    if (!user) {
+        throw new UnauthorizedException("Invalid email or password");
+    }
 
-        if (!user) {
-            return {
-                statusCode: 401,
-                message: "Invalid email or password",
-            };
-        }
-
-        const passwordMatch = user.password
+    const passwordMatch = user.password
         ? await bcrypt.compare(loginRequest.password, user.password)
         : false;
 
-        if (!passwordMatch) {
-            return {
-                statusCode: 401,
-                message: "Invalid email or password",
-            };
-        }
-
-        const payload = await getUserPayload(user.email);
-
-        if (!payload) return { statusCode: 500, message: "Error building token payload" };
-
-        const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
-        const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
-
-        await prisma.user.update({
-            where: { email: user.email },
-            data: { refreshToken: refreshToken }
-        });
-
-        return {
-            statusCode: 200,
-            message: "Login successful",
-            accessToken,
-            refreshToken,
-        };
-    } catch (error) {
-        console.error("Login error:", error);
-
-        return {
-            statusCode: 500,
-            message: "Internal server error. An error occurred during login",
-        }
+    if (!passwordMatch) {
+        throw new UnauthorizedException("Invalid email or password");
     }
-    
+
+    const payload = await getUserPayload(user.email);
+
+    if (!payload) throw new InternalServerErrorException("Error building token payload");
+
+    const accessToken = sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
+    const refreshToken = sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
+
+    await prisma.user.update({
+        where: { email: user.email },
+        data: { refreshToken: refreshToken }
+    });
+
+    return {
+        statusCode: 200,
+        message: "Login successful",
+        accessToken,
+        refreshToken,
+    };
 }
 
 export async function logout(email: string): Promise<Response> {
-    try {
-        await prisma.user.update({
-            where: { email },
-            data: { refreshToken: null }
-        });
+    await prisma.user.update({
+        where: { email },
+        data: { refreshToken: null }
+    });
 
-        return { statusCode: 200, message: "Logout successful" };
-    } catch (error) {
-        console.error("Logout error:", error);
-        return {
-            statusCode: 500,
-            message: "Internal server error. An error occurred during logout",
-        }
-    }
+    return { statusCode: 200, message: "Logout successful" };
 }
 
 export async function register(registerRequest: RegisterRequest): Promise<RegisterResponse> {
-    try {
-        const validation = RegisterSchema.safeParse(registerRequest);
+    const validation = RegisterSchema.safeParse(registerRequest);
 
-        if (!validation.success) {
-            return {
-                statusCode: 400,
-                message: validation.error.issues[0]!.message,
-            }
-        }
-
-        const existingUser = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    {
-                        email: registerRequest.email,
-                    },
-                    {
-                        username: registerRequest.username,
-                    }
-                ]
-            }
-        });
-
-        if (existingUser) {
-            return {
-                statusCode: 400,
-                message: "Email or username already exists",
-            };
-        }
-
-        const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
-        const hashedPassword: string = await bcrypt.hash(registerRequest.password, SALT_ROUNDS);
-
-        await prisma.user.create({
-            data: {
-                email: registerRequest.email,
-                username: registerRequest.username,
-                password: hashedPassword,
-                roleId: userRole!.id,
-            }
-        });
-
-        return {
-            statusCode: 201,
-            message: "User registered successfully",
-        };
-    } catch (error) {
-        console.error("Register error:", error);
-        return {
-            statusCode: 500,
-            message: "Internal server error. An error occurred during registration",
-        }
+    if (!validation.success) {
+        throw new BadRequestException(validation.error.issues[0]!.message);
     }
+
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            OR: [
+                {
+                    email: registerRequest.email,
+                },
+                {
+                    username: registerRequest.username,
+                }
+            ]
+        }
+    });
+
+    if (existingUser) {
+        throw new ConflictException("Email or username already exists");
+    }
+
+    const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
+    const hashedPassword: string = await bcrypt.hash(registerRequest.password, SALT_ROUNDS);
+
+    await prisma.user.create({
+        data: {
+            email: registerRequest.email,
+            username: registerRequest.username,
+            password: hashedPassword,
+            roleId: userRole!.id,
+        }
+    });
+
+    return {
+        statusCode: 201,
+        message: "User registered successfully",
+    };
 }
 
 export async function refreshToken(token: string): Promise<LoginResponse> {
-    try {
-        const validation = RefreshTokenSchema.safeParse({ token });
+    const validation = RefreshTokenSchema.safeParse({ token });
 
-        if (!validation.success) {
-            return {
-                statusCode: 400,
-                message: validation.error.issues[0]!.message,
-            }
-        }
-
-        const payload = verify(token, REFRESH_TOKEN_SECRET) as JwtPayload;
-
-        const user = await prisma.user.findUnique({
-            where: { 
-                email: payload.email,
-                refreshToken: token,
-            },
-        });
-
-        if (!user) {
-            await prisma.user.updateMany({
-                where: { email: payload.email },
-                data: { refreshToken: null },
-            });
-
-            return { statusCode: 404, message: 'Invalid refresh token' };
-        }
-
-        const newPayload = await getUserPayload(user.email);
-
-        if (!newPayload) return { statusCode: 500, message: "Error building token payload" };
-        
-        const accessToken = sign(newPayload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
-        const newRefreshToken = sign(newPayload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
-
-        // Update old token
-        await prisma.user.update({
-            where: { email: user.email },
-            data: { refreshToken: newRefreshToken }
-        });
-
-        return { statusCode: 200, message: "Token refreshed successfully", accessToken, refreshToken: newRefreshToken };
-    } catch (error) {
-        console.error('Refresh token error:', error);
-        return { statusCode: 500, message: "Internal server error. An error occurred while refreshing token" };
+    if (!validation.success) {
+        throw new BadRequestException(validation.error.issues[0]!.message);
     }
+
+    const payload = verify(token, REFRESH_TOKEN_SECRET) as JwtPayload;
+
+    const user = await prisma.user.findUnique({
+        where: { 
+            email: payload.email,
+            refreshToken: token,
+        },
+    });
+
+    if (!user) {
+        await prisma.user.updateMany({
+            where: { email: payload.email },
+            data: { refreshToken: null },
+        });
+
+        throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const newPayload = await getUserPayload(user.email);
+
+    if (!newPayload) throw new InternalServerErrorException("Error building token payload");
+    
+    const accessToken = sign(newPayload, ACCESS_TOKEN_SECRET, { expiresIn: accessTokenExpiry });
+    const newRefreshToken = sign(newPayload, REFRESH_TOKEN_SECRET, { expiresIn: refreshTokenExpiry });
+
+    // Update old token
+    await prisma.user.update({
+        where: { email: user.email },
+        data: { refreshToken: newRefreshToken }
+    });
+
+    return { statusCode: 200, message: "Token refreshed successfully", accessToken, refreshToken: newRefreshToken };
 }
