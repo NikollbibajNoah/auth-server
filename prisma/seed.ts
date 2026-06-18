@@ -27,7 +27,6 @@ const roles = {
 async function main() {
     console.log("Seeding...");
 
-    // 1. Create permissions
     for (const permission of permissions) {
         await prisma.permission.upsert({
             where: { name: permission },
@@ -38,7 +37,6 @@ async function main() {
 
     console.log(`${permissions.length} permissions created`);
 
-    // 2. Create roles and assign permissions
     for (const [roleName, rolePermissions] of Object.entries(roles)) {
         const permissionRecords = await prisma.permission.findMany({
             where: { name: { in: rolePermissions } },
@@ -65,37 +63,38 @@ async function main() {
         });
 
         console.log(`Role '${roleName}' created with ${rolePermissions.length} permissions`);
-
-        // 3. Assign 'user' role to a default user
-        const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
-
-        if (userRole) {
-            const updated = await prisma.user.updateMany({
-                where: { roleId: { equals: undefined } },
-                data: { roleId: userRole.id },
-            });
-            console.log(`Updated ${updated.count} users with the 'user' role`);
-        }
-
-        // 4. Assign 'admin' role to a default admin user
-        const adminRole = await prisma.role.findUnique({ where: { name: 'admin' } });
-        const hashedPassword = await bcrypt.hash('password', 10);
-        
-        await prisma.user.upsert({
-            where: { email: 'admin@example.com' },
-            update: {
-                roleId: adminRole!.id,
-            },
-            create: {
-                email: 'admin@example.com',
-                username: 'admin',
-                password: hashedPassword,
-                roleId: adminRole!.id,
-            }
-        });
-
-        console.log('Seeding complete.');
     }
+
+    const userRole = await prisma.role.findUnique({ where: { name: "user" } });
+    if (userRole) {
+        const updated = await prisma.user.updateMany({
+            where: { roleId: { equals: undefined } },
+            data: { roleId: userRole.id },
+        });
+        console.log(`Updated ${updated.count} users with the 'user' role`);
+    }
+
+    const adminRole = await prisma.role.findUnique({ where: { name: "admin" } });
+    if (!adminRole) {
+        throw new Error("Admin role was not created");
+    }
+
+    const hashedPassword = await bcrypt.hash("password", 10);
+
+    await prisma.user.upsert({
+        where: { email: "admin@example.com" },
+        update: {
+            roleId: adminRole.id,
+        },
+        create: {
+            email: "admin@example.com",
+            username: "admin",
+            password: hashedPassword,
+            roleId: adminRole.id,
+        },
+    });
+
+    console.log("Seeding complete.");
 }
 
 main()
