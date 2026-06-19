@@ -1,13 +1,34 @@
 import { buildApp } from "../helpers/buildApp";
 import * as authProvider from "../../src/service/authProvider";
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { ConflictException, UnauthorizedException } from "../../src/lib/errors";
+import { LoginResponse } from "../../src/lib/types/auth/loginResponse";
 
 jest.mock("../../src/service/authProvider");
+
+jest.mock("../../src/hooks/authMiddleware", () => ({
+    authMiddleware: jest.fn(async (request: FastifyRequest) => {
+        request.user = {
+            email: "test@example.com",
+            username: "testuser",
+            role: "user",
+            permissions: ["read"],
+        };
+    }),
+    requirePermission: jest.fn(() => async () => undefined),
+}));
 
 const mockedLogin = authProvider.login as jest.MockedFunction<typeof authProvider.login>;
 const mockedRegister = authProvider.register as jest.MockedFunction<typeof authProvider.register>;
 const mockedRefreshToken = authProvider.refreshToken as jest.MockedFunction<typeof authProvider.refreshToken>;
+const mockedLogout = authProvider.logout as jest.MockedFunction<typeof authProvider.logout>;
+
+// --- Helper -----------------------------------------------
+function expectAuthCookies(response: LoginResponse, shouldBeSet: boolean) {
+    const cookies: any = response.cookies;
+    expect(cookies.some(c => c.name === "accessToken")).toBe(shouldBeSet);
+    expect(cookies.some(c => c.name === "refreshToken")).toBe(shouldBeSet);
+}
 
 describe("Auth Routes", () => {
     let app: FastifyInstance;
@@ -50,9 +71,7 @@ describe("Auth Routes", () => {
                 message: "Login successful"
             });
 
-            const cookies = response.cookies;
-            expect(cookies.some(c => c.name === "accessToken")).toBe(true);
-            expect(cookies.some(c => c.name === "refreshToken")).toBe(true);
+            expectAuthCookies(response, true);
         });
 
         it("should return 401 on invalid credentials", async () => {
@@ -82,9 +101,7 @@ describe("Auth Routes", () => {
                 },
             });
 
-            const cookies = response.cookies;
-            expect(cookies.some(c => c.name === "accessToken")).toBe(false);
-            expect(cookies.some(c => c.name === "refreshToken")).toBe(false);
+            expectAuthCookies(response, false);
         });
     });
 
@@ -129,32 +146,97 @@ describe("Auth Routes", () => {
 
     // --- POST /refresh -----------------------------------------------
 
-    // describe("POST /refresh", () => {
-    //     it("should return 200 and set new access token on successful refresh", async () => {
-    //         mockedRefreshToken.mockResolvedValue({
-    //             statusCode: 200,
-    //             message: "Token refreshed successfully",
-    //             accessToken: "new-access-token-abc",
-    //             refreshToken: "new-refresh-token-xyz"
-    //         });
+    describe("POST /refresh", () => {
+        it("should return 200 and set new cookies when token comes from cookie", async () => {
+            mockedRefreshToken.mockResolvedValue({
+                statusCode: 200,
+                message: "Token refreshed successfully",
+                accessToken: "new-access-token-abc",
+                refreshToken: "new-refresh-token-xyz"
+            });
 
-    //         const response = await app.inject({
-    //             method: "POST",
-    //             url: "/refresh",
-    //             payload: {
-    //                 id: "abc",
-    //                 email: "test@example.com",
-    //                 username: "testuser",
-    //                 role: "user",
-    //                 permissions: ["read"]
-    //             }
-    //         });
+            const response = await app.inject({
+                method: "POST",
+                url: "/refresh",
+                cookies: {
+                    refreshToken: "old-refresh-token-xyz"
+                },
+            });
 
-    //         expect(response.statusCode).toBe(200);
+            expect(response.statusCode).toBe(200);
 
-    //         const cookies = response.cookies;
-    //         expect(cookies.some(c => c.name === "accessToken")).toBe(true);
-    //         expect(cookies.some(c => c.name === "refreshToken")).toBe(true);
-    //     });
-    // })
+            expectAuthCookies(response, true);
+        });
+
+        it("should return 200 and set new cookies when token comes from payload body", async () => {
+            mockedRefreshToken.mockResolvedValue({
+                statusCode: 200,
+                message: "Token refreshed successfully",
+                accessToken: "new-access-token-abc",
+                refreshToken: "new-refresh-token-xyz"
+            });
+
+            const response = await app.inject({
+                method: "POST",
+                url: "/refresh",
+                payload: {
+                    token: "old-refresh-token-xyz"
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+
+            expectAuthCookies(response, false);
+        });
+
+        it("should return 400 if no token is provided", async () => {
+            const response = await app.inject({
+                method: "POST",
+                url: "/refresh",
+                payload: {},
+                cookies: {},
+            });
+
+            expect(response.statusCode).toBe(400);
+            expect(mockedRefreshToken).not.toHaveBeenCalled();
+        });
+    });
+
+
+    // --- POST /logout -----------------------------------------------
+
+    describe("POST /logout", () => {
+        it("should return 200 and clear cookies on successful logout", async () => {
+            mockedLogout.mockResolvedValue({
+                statusCode: 200,
+                message: "Logout successful",
+            });
+
+            const response = await app.inject({
+                method: "POST",
+                url: "/logout",
+                cookies: {
+                    accessToken: "access-token-abc",
+                }
+            });
+
+            expect(response.statusCode).toBe(200);
+            expect(mockedLogout).toHaveBeenCalledWith("test@example.com");
+            
+            const setCookie = response.headers["set-cookie"];
+            expect(setCookie).toContainEqual(expect.stringContaining("accessToken="));
+            expect(setCookie).toContainEqual(expect.stringContaining("refreshToken="));
+        });
+
+        it("should return 401 if user is not authenticated", async () => {
+            mockedLogout.mockRejectedValue(new UnauthorizedException("Unauthorized"));
+
+            const response = await app.inject({
+                method: "POST",
+                url: "/logout",
+            });
+
+            expect(response.statusCode).toBe(401);
+        });
+    });
 });

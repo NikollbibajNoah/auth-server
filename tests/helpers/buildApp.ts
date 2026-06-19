@@ -1,8 +1,11 @@
+/// <reference types="jest" />
+
 import fastify, { FastifyError } from 'fastify';
 import { authRoutes } from '../../src/routes/authRoutes';
 import { userRoutes } from '../../src/routes/userRoutes';
 import fastifyCookie from '@fastify/cookie';
 import { HttpException } from '../../src/lib/errors';
+import "../../src/lib/types/fastifyTypes";
 
 export async function buildApp() {
     const app = fastify();

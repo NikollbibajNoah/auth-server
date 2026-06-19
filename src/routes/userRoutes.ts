@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { authMiddleware, requirePermission } from "../hooks/authMiddleware";
-import { getAllUsers, getMe } from "../service/userService";
+import { getAllUsers, getMe } from "../service/userProvider";
 
 export async function userRoutes(server: FastifyInstance) {
     

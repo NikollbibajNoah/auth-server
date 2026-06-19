@@ -7,6 +7,7 @@ import { RegisterResponse } from "../lib/types/auth/registerResponse";
 import { login, refreshToken, logout, register } from "../service/authProvider";
 import { accessTokenCookieOptions, clearCookieOptions, refreshTokenCookieOptions } from "../lib/cookies";
 import { authRateLimit } from "../lib/rateLimit";
+import { BadRequestException } from "../lib/errors";
 
 export async function authRoutes(server: FastifyInstance) {
     
@@ -37,7 +38,7 @@ export async function authRoutes(server: FastifyInstance) {
             ?? (request.body as { token: string })?.token;
 
         if (!token) {
-            return reply.status(400).send({ statusCode: 400, message: "Refresh token required" });
+            throw new BadRequestException("Refresh token required");
         }
     
         const res = await refreshToken(token);

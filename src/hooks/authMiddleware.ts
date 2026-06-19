@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { JwtPayload, verify } from "jsonwebtoken";
 import { TokenPayload } from "../lib/types/tokenPayload";
+import { UnauthorizedException } from "../lib/errors";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 
@@ -16,7 +17,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
             const authHeader = request.headers.authorization;
 
             if (!authHeader || !authHeader.startsWith("Bearer ")) {
-                return reply.status(401).send({ statusCode: 401, message: "Authorization header missing or malformed" });
+                throw new UnauthorizedException("Authorization header missing or malformed");
             }
 
             const parts = authHeader.split(" ");
@@ -24,13 +25,13 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         }
 
         if (!token) {
-            return reply.status(401).send({ statusCode: 401, message: "Token missing" });
+            throw new UnauthorizedException("Token missing");
         }
 
         const verified = verify(token, ACCESS_TOKEN_SECRET);
 
         if (typeof verified === "string") {
-            return reply.status(401).send({ statusCode: 401, message: "Invalid token payload" });
+            throw new UnauthorizedException("Invalid token payload");
         }
 
         const payload: JwtPayload = verified;
