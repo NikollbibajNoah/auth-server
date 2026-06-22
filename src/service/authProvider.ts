@@ -1,7 +1,7 @@
 import type { LoginRequest } from "../lib/types/auth/loginRequest";
 import type { LoginResponse } from "../lib/types/auth/loginResponse";
 import { JwtPayload, sign, verify } from "jsonwebtoken";
-import { prisma } from "../lib/prisma";
+import prisma from "../lib/prisma";
 import { RegisterRequest } from "../lib/types/auth/registerRequest";
 import { RegisterResponse } from "../lib/types/auth/registerResponse";
 import { Response } from "../lib/types/auth/response";

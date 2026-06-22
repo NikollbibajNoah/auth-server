@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma";
+import prisma from "../lib/prisma";
 import { OAuthUserInfo } from "../lib/types/oAuthUserInfo";
 import { getUserPayload, resolveUsername } from "../lib/utils";
 import { sign } from "jsonwebtoken";

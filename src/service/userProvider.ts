@@ -1,6 +1,6 @@
 import { Prisma } from "../generated/prisma/client";
 import { NotFoundException } from "../lib/errors";
-import { prisma } from "../lib/prisma";
+import prisma from "../lib/prisma";
 import { UserInfoResponse, UsersInfoResponse } from "../lib/types/userInfoResponse";
 
 const userSelect = {
