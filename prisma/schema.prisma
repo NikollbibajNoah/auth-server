@@ -21,6 +21,14 @@ model User {
   roleId       String?
   role         Role?     @relation(fields: [roleId], references: [id])
   oauthAccounts OAuthAccount[]
+
+  // Mail
+  emailVerified Boolean @default(false)
+  verificationToken String? @unique
+  verificationExpiry  DateTime?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+
   createdAt    DateTime @default(now())
 }
 

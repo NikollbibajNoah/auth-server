@@ -1,5 +1,4 @@
-import { prisma } from "../src/lib/prisma";
-import { Permission } from "../src/lib/types/auth/Permission";
+import prisma from "../src/lib/prisma";
 import bcrypt from "bcrypt";
 
 const permissions = [
@@ -47,7 +46,7 @@ async function main() {
             update: {
                 permissions: {
                     deleteMany: {},
-                    create: permissionRecords.map((permission: Permission) => ({
+                    create: permissionRecords.map((permission) => ({
                         permissionId: permission.id,
                     })),
                 },
@@ -55,7 +54,7 @@ async function main() {
             create: {
                 name: roleName,
                 permissions: {
-                    create: permissionRecords.map((permission: Permission) => ({
+                    create: permissionRecords.map((permission) => ({
                         permissionId: permission.id,
                     })),
                 },
@@ -91,6 +90,7 @@ async function main() {
             username: "admin",
             password: hashedPassword,
             roleId: adminRole.id,
+            emailVerified: true,
         },
     });
 

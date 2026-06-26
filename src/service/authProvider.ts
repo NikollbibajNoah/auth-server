@@ -6,9 +6,12 @@ import { RegisterRequest } from "../lib/types/auth/registerRequest";
 import { RegisterResponse } from "../lib/types/auth/registerResponse";
 import { Response } from "../lib/types/auth/response";
 import bcrypt from "bcrypt";
-import { LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
+import { ForgotPasswordSchema, LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
 import { getUserPayload } from "../lib/utils";
 import { BadRequestException, ConflictException, InternalServerErrorException, UnauthorizedException } from "../lib/errors";
+import crypto from "crypto";
+import { mailProvider } from "./mailProvider";
+import { ForgotPasswordRequest } from "../lib/types/auth/ForgotPasswordRequest";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -42,6 +45,10 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
         throw new UnauthorizedException("Invalid email or password");
     }
 
+    if (!user.emailVerified) {
+        throw new UnauthorizedException("Email not verified");
+    }
+
     const payload = await getUserPayload(user.email);
 
     if (!payload) throw new InternalServerErrorException("Error building token payload");
@@ -54,6 +61,8 @@ export async function login(loginRequest: LoginRequest): Promise<LoginResponse> 
         data: { refreshToken: refreshToken }
     });
 
+    await mailProvider.sendLoginNotification(user.email, 'unknown');
+    
     return {
         statusCode: 200,
         message: "Login successful",
@@ -98,14 +107,21 @@ export async function register(registerRequest: RegisterRequest): Promise<Regist
     const userRole = await prisma.role.findUnique({ where: { name: 'user' } });
     const hashedPassword: string = await bcrypt.hash(registerRequest.password, SALT_ROUNDS);
 
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
     await prisma.user.create({
         data: {
             email: registerRequest.email,
             username: registerRequest.username,
             password: hashedPassword,
             roleId: userRole!.id,
+            verificationToken,
+            verificationExpiry
         }
     });
+
+    await mailProvider.sendVerificationEmail(registerRequest.email, verificationToken);
 
     return {
         statusCode: 201,
@@ -152,4 +168,93 @@ export async function refreshToken(token: string): Promise<LoginResponse> {
     });
 
     return { statusCode: 200, message: "Token refreshed successfully", accessToken, refreshToken: newRefreshToken };
+}
+
+export async function verifyEmail(token: string): Promise<Response> {
+    const user = await prisma.user.findFirst({
+        where: {
+            verificationToken: token,
+            verificationExpiry: { gt: new Date() },
+        }
+    });
+
+    if (!user) {
+        throw new BadRequestException("Invalid or expired verification token");
+    }
+
+    await prisma.user.update({
+        where: { id: user.id },
+        data: {
+            emailVerified: true,
+            verificationToken: null,
+            verificationExpiry: null,
+        }
+    });
+
+    return {
+        statusCode: 200,
+        message: "Email verified successfully",
+    }
+}
+
+export async function forgotPassword(email: string): Promise<Response> {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+        throw new BadRequestException("User with this email does not exist");
+    }
+
+    const resetPasswordToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+        where: { id: user.id },
+        data: {
+            resetPasswordToken,
+            resetPasswordExpiry,
+        }
+    });
+
+    await mailProvider.sendPasswordResetEmail(email, resetPasswordToken);
+
+    return {
+        statusCode: 200,
+        message: "Password reset email sent successfully",
+    }
+}
+
+export async function resetPassword(forgotPasswordRequest: ForgotPasswordRequest): Promise<Response> {
+    const validation = ForgotPasswordSchema.safeParse(forgotPasswordRequest);
+
+    if (!validation.success) {
+        throw new BadRequestException(validation.error.issues[0]!.message);
+    }
+
+    const user = await prisma.user.findFirst({
+        where: {
+            resetPasswordToken: forgotPasswordRequest.token,
+            resetPasswordExpiry: { gt: new Date() },
+        }
+    });
+
+    if (!user) {
+        throw new BadRequestException("Invalid or expired reset password token");
+    }
+
+    const hashedPassword: string = await bcrypt.hash(forgotPasswordRequest.password, SALT_ROUNDS);
+
+    await prisma.user.update({
+        where: { id: user.id },
+        data: {
+            password: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpiry: null,
+            refreshToken: null, // Invalidate existing refresh tokens
+        }
+    });
+
+    return {
+        statusCode: 200,
+        message: "Password reset successfully",
+    };
 }

@@ -22,6 +22,18 @@ export const RegisterSchema = z.object({
     path: ["confirmPassword"],
 });
 
+export const ForgotPasswordSchema = z.object({
+    password: z.string()
+    .min(6, "Password must be at least 6 characters long")
+    .regex(/[A-Z]/, "Must contain uppercase")
+    .regex(/[0-9]/, "Must contain number"),
+
+    confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+}); 
+
 export const RefreshTokenSchema = z.object({
     token: z.string().min(1, "Refresh token is required"),
 });

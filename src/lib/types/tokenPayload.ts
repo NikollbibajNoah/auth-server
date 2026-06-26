@@ -5,4 +5,5 @@ export type TokenPayload = JwtPayload & {
     username: string;
     role: string;
     permissions: string[];
+    veemailVerified: boolean;
 }

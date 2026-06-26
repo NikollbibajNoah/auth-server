@@ -66,6 +66,12 @@
           class="w-full bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm py-2 rounded transition">
           Login
         </button>
+        <div class="text-center mt-2">
+          <button onclick="switchTab('forgot')"
+            class="text-xs text-zinc-600 hover:text-zinc-400 transition">
+            Forgot password?
+          </button>
+        </div>
       </div>
 
       <div id="form-register" class="hidden bg-zinc-900 border border-zinc-800 rounded p-4 space-y-3">
@@ -92,6 +98,43 @@
         <button onclick="doRegister()"
           class="w-full bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm py-2 rounded transition">
           Register
+        </button>
+      </div>
+      
+      <div id="form-forgot" class="hidden bg-zinc-900 border border-zinc-800 rounded p-4 space-y-3">
+        <button onclick="switchTab('login')" class="text-xs text-zinc-500 hover:text-zinc-300 transition">
+          ← back to login
+        </button>
+        <p class="text-xs text-zinc-400">Enter your email and we'll send you a reset link.</p>
+        <div>
+          <label class="text-xs text-zinc-500 block mb-1">Email</label>
+          <input id="forgot-email" type="email" placeholder="you@example.com"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition" />
+        </div>
+        <button onclick="doForgotPassword()"
+          class="w-full bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm py-2 rounded transition">
+          Send reset link
+        </button>
+      </div>
+
+      <div id="form-reset" class="hidden bg-zinc-900 border border-zinc-800 rounded p-4 space-y-3">
+        <button onclick="switchTab('login')" class="text-xs text-zinc-500 hover:text-zinc-300 transition">
+          ← back to login
+        </button>
+        <p class="text-xs text-zinc-400">Choose a new password for your account.</p>
+        <div>
+          <label class="text-xs text-zinc-500 block mb-1">New Password</label>
+          <input id="reset-password" type="password" placeholder="••••••••"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition" />
+        </div>
+        <div>
+          <label class="text-xs text-zinc-500 block mb-1">Confirm New Password</label>
+          <input id="reset-confirm-password" type="password" placeholder="••••••••"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition" />
+        </div>
+        <button onclick="doResetPassword()"
+          class="w-full bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm py-2 rounded transition">
+          Reset password
         </button>
       </div>
     </div>
@@ -155,10 +198,15 @@
     document.getElementById('github-login-link').href = `${BASE_URL}/auth/github`;
 
     function switchTab(tab) {
-      document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
-      document.getElementById('tab-login').className = tab === 'login' ? 'tab-active text-xs px-4 py-1.5 rounded transition' : 'tab-inactive text-xs px-4 py-1.5 rounded transition';
-      document.getElementById('tab-register').className = tab === 'register' ? 'tab-active text-xs px-4 py-1.5 rounded transition' : 'tab-inactive text-xs px-4 py-1.5 rounded transition';
+      ['login', 'register', 'forgot', 'reset'].forEach(t => {
+        document.getElementById('form-' + t).classList.add('hidden');
+      });
+      document.getElementById('form-' + tab).classList.remove('hidden');
+
+      document.getElementById('tab-login').className =
+        tab === 'login' ? 'tab-active text-xs px-4 py-1.5 rounded transition' : 'tab-inactive text-xs px-4 py-1.5 rounded transition';
+      document.getElementById('tab-register').className =
+        tab === 'register' ? 'tab-active text-xs px-4 py-1.5 rounded transition' : 'tab-inactive text-xs px-4 py-1.5 rounded transition';
     }
 
     function setStatus(loggedIn, username, role) {
@@ -220,6 +268,37 @@
       const data = await res.json();
       addLog('POST', '/register', res.status, data);
       if (res.ok) switchTab('login');
+    }
+
+    async function doForgotPassword() {
+      const email = document.getElementById('forgot-email').value;
+      const res = await fetch(`${BASE_URL}/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      addLog('POST', '/forgot-password', res.status, data);
+    }
+
+    async function doResetPassword() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      const password = document.getElementById('reset-password').value;
+      const confirmPassword = document.getElementById('reset-confirm-password').value;
+
+      const res = await fetch(`${BASE_URL}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: password }),
+      });
+      const data = await res.json();
+      addLog('POST', '/reset-password', res.status, data);
+      if (res.ok) switchTab('login');
+    }
+
+    if (new URLSearchParams(window.location.search).get('token')) {
+      switchTab('reset');
     }
 
     async function checkMe() {
