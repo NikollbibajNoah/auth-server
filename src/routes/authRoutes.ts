@@ -8,7 +8,7 @@ import { login, refreshToken, logout, register, verifyEmail, forgotPassword, res
 import { accessTokenCookieOptions, clearCookieOptions, refreshTokenCookieOptions } from "../lib/cookies";
 import { authRateLimit } from "../lib/rateLimit";
 import { BadRequestException } from "../lib/errors";
-import { ForgotPasswordRequest } from "../lib/types/auth/ForgotPasswordRequest";
+import { ResetPasswordRequest } from "../lib/types/auth/ResetPasswordRequest";
 
 export async function authRoutes(server: FastifyInstance) {
     
@@ -97,7 +97,7 @@ export async function authRoutes(server: FastifyInstance) {
         return reply.status(res.statusCode).send(res);
     });
 
-    server.post<{ Body: ForgotPasswordRequest }>('/reset-password', { ...authRateLimit }, async (request, reply) => {
+    server.post<{ Body: ResetPasswordRequest }>('/reset-password', { ...authRateLimit }, async (request, reply) => {
         const forgotPasswordRequest = request.body;
 
         if (!forgotPasswordRequest.token || !forgotPasswordRequest.password || !forgotPasswordRequest.confirmPassword) {

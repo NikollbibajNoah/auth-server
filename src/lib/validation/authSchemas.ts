@@ -22,7 +22,7 @@ export const RegisterSchema = z.object({
     path: ["confirmPassword"],
 });
 
-export const ForgotPasswordSchema = z.object({
+export const ResetPasswordSchema = z.object({
     password: z.string()
     .min(6, "Password must be at least 6 characters long")
     .regex(/[A-Z]/, "Must contain uppercase")

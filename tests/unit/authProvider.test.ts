@@ -30,6 +30,11 @@ describe("AuthProvider", () => {
         roleId: "role-1",
         createdAt: new Date(),
         refreshToken: null,
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpiry: null,
+        resetPasswordToken: null,
+        resetPasswordExpiry: null,
     };
 
     // --- POST /register -----------------------------------------------

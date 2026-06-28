@@ -6,12 +6,12 @@ import { RegisterRequest } from "../lib/types/auth/registerRequest";
 import { RegisterResponse } from "../lib/types/auth/registerResponse";
 import { Response } from "../lib/types/auth/response";
 import bcrypt from "bcrypt";
-import { ForgotPasswordSchema, LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
+import { ResetPasswordSchema, LoginSchema, RefreshTokenSchema, RegisterSchema } from "../lib/validation/authSchemas";
 import { getUserPayload } from "../lib/utils";
 import { BadRequestException, ConflictException, InternalServerErrorException, UnauthorizedException } from "../lib/errors";
 import crypto from "crypto";
 import { mailProvider } from "./mailProvider";
-import { ForgotPasswordRequest } from "../lib/types/auth/ForgotPasswordRequest";
+import { ResetPasswordRequest } from "../lib/types/auth/ResetPasswordRequest";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -223,8 +223,8 @@ export async function forgotPassword(email: string): Promise<Response> {
     }
 }
 
-export async function resetPassword(forgotPasswordRequest: ForgotPasswordRequest): Promise<Response> {
-    const validation = ForgotPasswordSchema.safeParse(forgotPasswordRequest);
+export async function resetPassword(resetPasswordRequest: ResetPasswordRequest): Promise<Response> {
+    const validation = ResetPasswordSchema.safeParse(resetPasswordRequest);
 
     if (!validation.success) {
         throw new BadRequestException(validation.error.issues[0]!.message);
@@ -232,7 +232,7 @@ export async function resetPassword(forgotPasswordRequest: ForgotPasswordRequest
 
     const user = await prisma.user.findFirst({
         where: {
-            resetPasswordToken: forgotPasswordRequest.token,
+            resetPasswordToken: resetPasswordRequest.token,
             resetPasswordExpiry: { gt: new Date() },
         }
     });
@@ -241,7 +241,7 @@ export async function resetPassword(forgotPasswordRequest: ForgotPasswordRequest
         throw new BadRequestException("Invalid or expired reset password token");
     }
 
-    const hashedPassword: string = await bcrypt.hash(forgotPasswordRequest.password, SALT_ROUNDS);
+    const hashedPassword: string = await bcrypt.hash(resetPasswordRequest.password, SALT_ROUNDS);
 
     await prisma.user.update({
         where: { id: user.id },
