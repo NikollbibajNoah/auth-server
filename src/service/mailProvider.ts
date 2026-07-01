@@ -3,14 +3,15 @@ import { loginNotificationTemplate } from "../lib/mail/templates/login-notificat
 import { passwordResetTemplate } from "../lib/mail/templates/password-reset";
 import { verificationTemplate } from "../lib/mail/templates/verification";
 
-const FROM = process.env.MAIL_FROM ?? "noreply@auth-server.local";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
+const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME ?? "Auth Server";
+const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS ?? "noreply@auth-server.local";
+const FROM = `${MAIL_FROM_NAME} <${MAIL_FROM_ADDRESS}>`;
 export class MailProvider {
     async sendEmail(to: string, subject: string, html: string): Promise<void> {
         if (IS_PRODUCTION) {
             const result = await resend.emails.send({
-                from: "Auth Server <onboarding@resend.dev>",
+                from: FROM,
                 to,
                 subject,
                 html,
