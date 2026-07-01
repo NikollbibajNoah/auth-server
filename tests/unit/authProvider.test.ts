@@ -138,6 +138,11 @@ describe("AuthProvider", () => {
                     roleId: mockRole.id,
                     createdAt: new Date(),
                     refreshToken: null,
+                    emailVerified: true,
+                    verificationToken: null,
+                    verificationExpiry: null,
+                    resetPasswordToken: null,
+                    resetPasswordExpiry: null,
                 };
 
                 prismaMock.user.findFirst.mockResolvedValue(null);
