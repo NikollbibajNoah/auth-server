@@ -1,49 +1,45 @@
-import { transporter } from "../lib/mail/mailer";
+import { resend, transporter } from "../lib/mail/mailer";
 import { loginNotificationTemplate } from "../lib/mail/templates/login-notification";
 import { passwordResetTemplate } from "../lib/mail/templates/password-reset";
 import { verificationTemplate } from "../lib/mail/templates/verification";
 
 const FROM = process.env.MAIL_FROM ?? "noreply@auth-server.local";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 export class MailProvider {
     async sendEmail(to: string, subject: string, html: string): Promise<void> {
-        await transporter.sendMail({
-            from: FROM,
-            to,
-            subject,
-            html,
-        });
+        if (IS_PRODUCTION) {
+            const result = await resend.emails.send({
+                from: "Auth Server <onboarding@resend.dev>",
+                to,
+                subject,
+                html,
+            });
+
+            console.log('Resend result:', result);
+        } else {
+            await transporter.sendMail({
+                from: FROM,
+                to,
+                subject,
+                html,
+            }); 
+        }
+        
     }
 
     async sendVerificationEmail(to: string, token: string): Promise<void> {
         const verifyUrl = `${process.env.APP_URL}/verify-email?token=${token}`;
-
-        await transporter.sendMail({
-            from: FROM,
-            to,
-            subject: "Verify your email address",
-            html: verificationTemplate(verifyUrl),
-        })
+        await this.sendEmail(to, "Verify your email address", verificationTemplate(verifyUrl));
     }
 
     async sendPasswordResetEmail(to: string, token: string): Promise<void> {
         const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
-
-        await transporter.sendMail({
-            from: FROM,
-            to,
-            subject: "Reset your password",
-            html: passwordResetTemplate(resetUrl),
-        })
+        await this.sendEmail(to, "Reset your password", passwordResetTemplate(resetUrl));
     }
 
     async sendLoginNotification(to: string, ip: string): Promise<void> {
-        await transporter.sendMail({
-            from: FROM,
-            to,
-            subject: "New login detected",
-            html: loginNotificationTemplate(ip),
-        })
+        await this.sendEmail(to, "New login detected", loginNotificationTemplate(ip));
     }
 }
 

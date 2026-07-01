@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
+import { Resend } from "resend";
 
 function createTransport(): Transporter {
     return nodemailer.createTransport({
@@ -9,3 +10,4 @@ function createTransport(): Transporter {
 }
 
 export const transporter = createTransport();
+export const resend = new Resend(process.env.MAIL_API_KEY);
