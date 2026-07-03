@@ -10,6 +10,8 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 - [API](#api)
 - [OAuth 2.0](#oauth-20)
 - [Configuration](#configuration)
+- [Mailing](#mailing)
+- [Demo](#demo)
 - [Installation](#installation)
 
 ## Features
@@ -17,6 +19,9 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 - JWT Access and Refresh Token authentication
 - Password hashing with bcrypt
 - Protected routes via Bearer Token
+- Password reset
+- Email verification
+- Login notification
 - PostgreSQL database with Prisma ORM
 
 ## Technologies
@@ -26,9 +31,10 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 | [Fastify](https://fastify.dev) | Web framework - Server |
 | [Prisma](https://prisma.io) | ORM & migrations |
 | [PostgreSQL](https://postgresql.org) | Database |
-| [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) | JWT signing & verification |
-| [bcrypt](https://github.com/kelektiv/node.bcrypt.js) | Password hashing |
+| [Jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) | JWT signing & verification |
+| [Bcrypt](https://github.com/kelektiv/node.bcrypt.js) | Password hashing |
 | [Docker](https://docker.com) | PostgreSQL container |
+| [Jest](https://jestjs.io/) | Testing framework |
 
 ## API
 
@@ -39,7 +45,10 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 | POST | `/login` | ❌ | Login and receive tokens |
 | POST | `/refresh` | ❌ | Get a new access token |
 | POST | `/logout` | ✅ | Logout and invalidate refresh token |
-
+| GET  | `/verify-email` | ❌ | Verify email after registration |
+| POST | `/forgot-password` | ❌ | Send password reset via mail |
+| POST | `/reset-password` | ❌ | Confirm new password and reset |
+ 
 ### User
 | Method | Endpoint | Protected | Description |
 |---|---|---|---|
@@ -83,8 +92,6 @@ Response:
 
 ## OAuth 2.0
 The auth server supports the OAuth 2.0 flow for logging in via providers such as Google, GitHub, Facebook, etc. After a successfull redirect-based login, the user is stored in the database without a password.
-> [!NOTE]
-> Currently the auth server only supports Google and Github OAuth 2.0, but additional providers can be added.
 
 The login endpoints for supported providers are:
 `http://localhost:8080/auth/google`
@@ -96,6 +103,21 @@ After a successfull login the server returns the same response format as the tra
 ## Configuration
 The project already offers a `.env.example` file in the root directory, which can be renamed to `.env` and used.
 ```env
+APP_URL=http://localhost:8080
+
+NODE_ENV=development
+
+# Mailpit config (local development)
+MAILPIT_HOST="127.0.0.1"
+MAILPIT_PORT=1025
+MAILPIT_UI_PORT=8025
+MAILPIT_SMTP_PORT=1025
+
+# Resend config (production)
+MAIL_API_KEY="ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+MAIL_FROM_NAME="Auth Server"
+MAIL_FROM_ADDRESS=onboarding@resend.dev
+
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/auth_db"
 POSTGRES_HOST=localhost
@@ -138,8 +160,13 @@ Steps to configure the Google OAuth 2.0 provider:
 
 Optional note: ensure you configure the correct OAuth client (the one whose Client ID matches `GOOGLE_CLIENT_ID` in your .env and the same for github and all other providers).
 
-## Demo
+> [!NOTE]
+> Follow the online documentation to set up and use oauth app in github: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app
 
+## Mailing
+The auth server uses nodemailer to send emails for reseting the password, verify newly registered users and login notification. For local development, mailpit is used as a docker image in the docker compose. The mailpit UI is availble at: `http://localhost:8025`
+
+## Demo
 A minimal test frontend is served directly by the auth server and deployed on Vercel.
 
 🔗 **https://auth-server-hra8.vercel.app**
@@ -171,7 +198,7 @@ npm install
 docker-compose up -d
 
 # 4. Run migrations
-npx prisma migrate dev && prisma db seed
+npx prisma migrate dev && npm run seed
 
 # 5. Build and start
 npm run build
