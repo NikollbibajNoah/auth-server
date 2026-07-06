@@ -32,6 +32,22 @@ services:
         MP_SMTP_AUTH_ACCEPT_ANY: 1
         MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
+  # auth-server:
+  #   build: .
+  #   container_name: auth-server-app
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-auth_db}
+  #     POSTGRES_HOST: postgres
+  #     MAILPIT_HOST: mailpit
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     mailpit:
+  #       condition: service_started
 volumes:
   postgres_data:
   mailpit_data:
