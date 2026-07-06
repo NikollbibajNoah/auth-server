@@ -13,6 +13,14 @@ jest.mock("jsonwebtoken", () => ({
     sign: jest.fn(),
     verify: jest.fn(),
 }));
+jest.mock("../../src/service/mailProvider", () => ({
+    mailProvider: {
+        sendEmail: jest.fn().mockResolvedValue(undefined),
+        sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+        sendLoginNotification: jest.fn().mockResolvedValue(undefined),
+        sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    },
+}));
 
 const mockBcryptHash = bcrypt.hash as jest.Mock;
 const mockBcryptCompare = bcrypt.compare as jest.Mock;

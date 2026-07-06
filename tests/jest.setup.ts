@@ -1,0 +1,1 @@
+process.env.MAIL_API_KEY = process.env.MAIL_API_KEY ?? "re_dummy_test_key";
