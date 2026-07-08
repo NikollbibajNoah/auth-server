@@ -1,5 +1,9 @@
-import prisma from "../src/lib/prisma";
+import prisma from "../lib/prisma";
 import bcrypt from "bcrypt";
+
+const adminEmail = process.env.ADMIN_EMAIL ?? "admin@example.com";
+const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+const adminPassword = process.env.ADMIN_PASSWORD ?? "password";
 
 const permissions = [
 
@@ -67,7 +71,7 @@ async function main() {
     const userRole = await prisma.role.findUnique({ where: { name: "user" } });
     if (userRole) {
         const updated = await prisma.user.updateMany({
-            where: { roleId: { equals: undefined } },
+            where: { roleId: null },
             data: { roleId: userRole.id },
         });
         console.log(`Updated ${updated.count} users with the 'user' role`);
@@ -78,16 +82,16 @@ async function main() {
         throw new Error("Admin role was not created");
     }
 
-    const hashedPassword = await bcrypt.hash("password", 10);
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     await prisma.user.upsert({
-        where: { email: "admin@example.com" },
+        where: { email: adminEmail },
         update: {
             roleId: adminRole.id,
         },
         create: {
-            email: "admin@example.com",
-            username: "admin",
+            email: adminEmail,
+            username: adminUsername,
             password: hashedPassword,
             roleId: adminRole.id,
             emailVerified: true,
