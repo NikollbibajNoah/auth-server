@@ -4,6 +4,8 @@
 # Auth Server
 A lightweight and powerful auth server to connect via REST API. This project is created with Node.js and useful libraries like **Fastify**, **jsonwebtoken** and **Prisma**. The authentication server uses stateless JWT tokens to authenticate users.
 
+It is also published as a ready-to-use Docker image, so it can be dropped into any backend project as a standalone building block without needing this project's source code (see [Run with Docker](#run-with-docker)).
+
 ## Table of Contents
 - [Features](#features)
 - [Technologies](#technologies)
@@ -13,6 +15,7 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 - [Mailing](#mailing)
 - [Demo](#demo)
 - [Installation](#installation)
+- [Run with Docker](#run-with-docker)
 
 ## Features
 - User registration and login
@@ -33,7 +36,7 @@ A lightweight and powerful auth server to connect via REST API. This project is 
 | [PostgreSQL](https://postgresql.org) | Database |
 | [Jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) | JWT signing & verification |
 | [Bcrypt](https://github.com/kelektiv/node.bcrypt.js) | Password hashing |
-| [Docker](https://docker.com) | PostgreSQL container |
+| [Docker](https://docker.com) | PostgreSQL container / deployment image |
 | [Jest](https://jestjs.io/) | Testing framework |
 
 ## API
@@ -107,6 +110,11 @@ APP_URL=http://localhost:8080
 
 NODE_ENV=development
 
+# Initial admin account, created/updated automatically on every start
+ADMIN_EMAIL=admin@example.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-me
+
 # Mailpit config (local development)
 MAILPIT_HOST="127.0.0.1"
 MAILPIT_PORT=1025
@@ -120,11 +128,6 @@ MAIL_FROM_ADDRESS=onboarding@resend.dev
 
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/auth_db"
-POSTGRES_HOST=localhost
-POSTGRES_USER=user
-POSTGRES_PASSWORD=password
-POSTGRES_DB=auth_db
-POSTGRES_PORT=5432
 
 # Auth
 ACCESS_TOKEN_SECRET="ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
@@ -166,6 +169,8 @@ Optional note: ensure you configure the correct OAuth client (the one whose Clie
 ## Mailing
 The auth server uses nodemailer to send emails for reseting the password, verify newly registered users and login notification. For local development, mailpit is used as a docker image in the docker compose. The mailpit UI is availble at: `http://localhost:8025`
 
+In production (`NODE_ENV=production`), [Resend](https://resend.com) is used instead via `MAIL_API_KEY`.
+
 ## Demo
 A minimal test frontend is served directly by the auth server and deployed on Vercel.
 
@@ -206,3 +211,94 @@ npm start
 ```
 
 The server is available at: `http://localhost:8080`
+
+## Run with Docker
+
+Instead of building from source, you can run the auth-server directly from its published Docker image - useful for dropping it into another backend project without needing this repository's source code at all.
+
+### Image
+
+```
+ghcr.io/nikollbibajnoah/auth-server:latest
+```
+
+Also available tagged with the corresponding commit SHA for reproducible, pinned versions (see [Packages](https://github.com/NikollbibajNoah/auth-server/pkgs/container/auth-server)).
+
+### What happens automatically
+
+On every container start, the entrypoint:
+1. runs any pending database migrations (`prisma migrate deploy`)
+2. seeds base roles (`user`, `admin`), permissions, and an admin user (idempotent, safe to run on every start - controlled via `ADMIN_EMAIL` / `ADMIN_USERNAME` / `ADMIN_PASSWORD`, see [Configuration](#configuration))
+
+### docker-compose.example.yml
+
+```yaml
+services:
+  auth-server:
+    image: ghcr.io/nikollbibajnoah/auth-server:latest
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      # These two must point to the service names below,
+      # NOT localhost/127.0.0.1 - containers talk to each other via service name.
+      POSTGRES_HOST: auth-postgres
+      MAILPIT_HOST: mailpit
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  auth-postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-auth_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Only needed when NODE_ENV=development.
+  # With NODE_ENV=production, Resend is used instead (MAIL_API_KEY), so this service can be removed.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025" # Web UI to inspect sent emails
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  auth_postgres_data:
+```
+
+Use the same `.env` shown in [Configuration](#configuration) as your `env_file`.
+
+### Quick start
+
+```bash
+docker compose up -d
+```
+
+The server will be available at `http://localhost:8080`.
+
+### Security note
+
+The seeded admin user is created or updated on every start. If `ADMIN_PASSWORD` is not set, an insecure default password is used - always override this for any production deployment.
+
+### Versioning
+
+Every image is published with two tags:
+
+- `latest` — most recent build from `main`
+- `<commit-sha>` — exact, reproducible version, recommended for production deployments
+
+```yaml
+image: ghcr.io/nikollbibajnoah/auth-server:<commit-sha>
+```
