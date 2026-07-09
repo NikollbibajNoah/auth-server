@@ -12,5 +12,5 @@ declare module 'fastify' {
     }
 }
 
-export const CALLBACK_BASE = process.env.OAUTH_CALLBACK_BASE_URL!;
+export const CALLBACK_BASE = process.env.APP_URL!;
 export const FRONTEND_URL = process.env.FRONTEND_URL!;
